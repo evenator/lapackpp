@@ -3,52 +3,17 @@ project(lapackpp)
 
 find_package(catkin REQUIRED)
 
-catkin_destinations()
-file(MAKE_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_INCLUDE_DESTINATION})
-file(MAKE_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_LIB_DESTINATION})
-
-set(TARBALL_NAME lapackpp-2.5.4.tar.gz)
-set(TARBALL_URL http://downloads.sourceforge.net/project/lapackpp/${TARBALL_NAME})
-set(EXTRACTED_DIR ${CMAKE_CURRENT_BINARY_DIR}/lapackpp-2.5.4)
-
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lapackpp-2.5.4.tar.gz
-    COMMAND wget -q ${TARBALL_URL}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+include(ExternalProject)
+ExternalProject_Add(upstream
+   # TODO: Stop depending on sourceforge. It's unreliable. See
+   # https://en.wikipedia.org/wiki/SourceForge#2015_Outages
+   # https://en.wikipedia.org/wiki/SourceForge#Controversies
+   URL http://downloads.sourceforge.net/project/lapackpp/lapackpp-2.5.4.tar.gz
+   URL_MD5 9ad74fb73fbcbf378c36a19a5dccbda7
+   CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=${CMAKE_INSTALL_PREFIX}
+   BUILD_IN_SOURCE 1
+   BUILD_COMMAND unset MAKEFLAGS && unset MAKELEVEL && unset MFLAGS && make LDFLAGS=-lgcc
+   INSTALL_COMMAND make install
 )
 
-add_custom_command(
-    OUTPUT ${EXTRACTED_DIR}/configure
-    COMMAND tar xzf ${TARBALL_NAME}
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lapackpp-2.5.4.tar.gz
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-add_custom_command(
-  OUTPUT ${EXTRACTED_DIR}/src/.libs/liblapackpp.so
-  COMMAND ${EXTRACTED_DIR}/configure 
-  COMMAND unset MAKEFLAGS && unset MAKELEVEL && unset MFLAGS && make LDFLAGS=-lgcc
-  COMMAND cp -r ${EXTRACTED_DIR}/include/* ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  COMMAND cp ${EXTRACTED_DIR}/src/.libs/* ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_LIB_DESTINATION}
-  DEPENDS ${EXTRACTED_DIR}/configure
-  WORKING_DIRECTORY ${EXTRACTED_DIR}
-)
-
-catkin_package(
-  INCLUDE_DIRS ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  LIBRARIES ${PROJECT_NAME} lapack
-)
-
-add_library(${PROJECT_NAME} ${EXTRACTED_DIR}/src/.libs/liblapackpp.so)
-set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-add_dependencies(${PROJECT_NAME} ${EXTRACTED_DIR}/src/.libs/liblapackpp.so)
-
-set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${EXTRACTED_DIR}")
-
-install(DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
-)
-
-install(FILES ${PROJECT_NAME}
-  DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-)
+install(FILES package.xml DESTINATION share/${PROJECT_NAME}) # REP 136
